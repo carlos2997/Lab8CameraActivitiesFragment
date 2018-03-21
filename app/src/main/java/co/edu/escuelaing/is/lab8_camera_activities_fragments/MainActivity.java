@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
@@ -24,10 +25,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private EditText edtMessage;
     private Button btnPhoto,btnSave;
     private ImageView imgPhoto;
+    private Uri selectedImageUri;
     private String[] photosCaptured = {"Camera", "Internal Storage"};
     private DialogInterface.OnClickListener onClickImageControl;
     private static final int SELECT_FILE_CAMERA = 0;
     private static final int SELECT_FILE_INTERNAL = 1;
+    public static final String EXTRA_MESSAGE_MESSAGE = "co.edu.escuelaing.is.lab8.MESSAGE";
+    public static final String EXTRA_MESSAGE_PICTURE = "co.edu.escuelaing.is.lab8.PICTURE";
 
     @NonNull
     public static Dialog createSingleChoiceAlertDialog(@NonNull Context context,
@@ -81,6 +85,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onActivityResult(int requestCode, int resultCode, Intent data){
         super.onActivityResult(requestCode,resultCode,data);
         if(resultCode == Activity.RESULT_OK){
+            selectedImageUri = data.getData();
+            imgPhoto.setImageURI(selectedImageUri);
+            /*
             switch(requestCode){
                 case SELECT_FILE_CAMERA:
                     Bitmap bitmap = (Bitmap) data.getExtras().get("data");
@@ -90,7 +97,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     Uri selectedImageUri = data.getData();
                     imgPhoto.setImageURI(selectedImageUri);
                     break;
-            }
+            }*/
+
         }
     }
 
@@ -100,13 +108,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             createSingleChoiceAlertDialog(this,"Select picture captured method",photosCaptured,onClickImageControl,null).show();
         }else if(view.getId() == btnSave.getId()){
             System.out.println(imgPhoto.getDrawable());
-            if(edtMessage.getText().toString().length()==0 || imgPhoto.getDrawable() == null){
+            if(edtMessage.getText().toString().length()==0 && imgPhoto.getDrawable() == null){
+                System.out.println("Entro1");
                 Toast.makeText(this,"Please enter either a message or select an image",Toast.LENGTH_SHORT).show();
             }else{
-                if(edtMessage.getText().toString().length()>50){
-                    Toast.makeText(this,"The text field should have a lenght no longer than 50 characters",Toast.LENGTH_SHORT).show();
+                if(edtMessage.getText().toString().length()>10){
+                    System.out.println("Entro2");
+                    edtMessage.setError("The text field should have a lenght longer than 50 characters");
                 }else{
-                    Toast.makeText(this,"Entro",Toast.LENGTH_SHORT).show();
+                    System.out.println("Entro3");
+                    Intent intent = new Intent(this,PostActivity.class);
+
+                    intent.putExtra(EXTRA_MESSAGE_PICTURE,selectedImageUri.toString());
+                    intent.putExtra(EXTRA_MESSAGE_MESSAGE,edtMessage.getText().toString());
+
+                    startActivity(intent);
                 }
             }
 
