@@ -1,17 +1,21 @@
 package co.edu.escuelaing.is.lab8_camera_activities_fragments;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -20,6 +24,8 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import java.io.File;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
     private EditText edtMessage;
@@ -27,6 +33,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ImageView imgPhoto;
     private Uri selectedImageUri;
     private String[] photosCaptured = {"Camera", "Internal Storage"};
+    private static String[] PERMISSIONS_STORAGE = {Manifest.permission.WRITE_EXTERNAL_STORAGE};
     private DialogInterface.OnClickListener onClickImageControl;
     private static final int SELECT_FILE_CAMERA = 0;
     private static final int SELECT_FILE_INTERNAL = 1;
@@ -55,6 +62,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        if(permission != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, 1);
+        }
+
         edtMessage = findViewById(R.id.edtMessage);
         btnPhoto = findViewById(R.id.btnPhoto);
         btnSave = findViewById(R.id.btnSave);
@@ -67,6 +79,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Intent intent;
                 if(photosCaptured[i].equals("Camera")){
                     intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    File photo = new File(Environment.getExternalStorageDirectory(),"Pic.jpg");
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT,Uri.fromFile(photo));
+                    selectedImageUri = Uri.fromFile(photo);
                     startActivityForResult(intent,SELECT_FILE_CAMERA);
                 }else{
                     intent = new Intent();
@@ -85,19 +100,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onActivityResult(int requestCode, int resultCode, Intent data){
         super.onActivityResult(requestCode,resultCode,data);
         if(resultCode == Activity.RESULT_OK){
-            selectedImageUri = data.getData();
-            imgPhoto.setImageURI(selectedImageUri);
-            /*
             switch(requestCode){
                 case SELECT_FILE_CAMERA:
-                    Bitmap bitmap = (Bitmap) data.getExtras().get("data");
-                    imgPhoto.setImageBitmap(bitmap);
+                    int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                    if(permission != PackageManager.PERMISSION_GRANTED){
+                        ActivityCompat.requestPermissions(this,PERMISSIONS_STORAGE,1);
+                        Toast.makeText(this,"You must guarantee permits, intent again!!",Toast.LENGTH_SHORT).show();
+                    }else{
+                        Uri selectedImage = selectedImageUri;
+                        getContentResolver().notifyChange(selectedImage,null);
+                        ContentResolver cr = getContentResolver();
+                        Bitmap bitmap;
+                        try{
+                            bitmap = android.provider.MediaStore.Images.Media.getBitmap(cr,selectedImage);
+                            imgPhoto.setImageBitmap(bitmap);
+                        }catch(Exception ex){
+                            Toast.makeText(this,"Failed: "+ex.getMessage(),Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
                     break;
                 case SELECT_FILE_INTERNAL:
-                    Uri selectedImageUri = data.getData();
+                    selectedImageUri = data.getData();
                     imgPhoto.setImageURI(selectedImageUri);
                     break;
-            }*/
+            }
 
         }
     }
@@ -109,14 +136,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }else if(view.getId() == btnSave.getId()){
             System.out.println(imgPhoto.getDrawable());
             if(edtMessage.getText().toString().length()==0 && imgPhoto.getDrawable() == null){
-                System.out.println("Entro1");
                 Toast.makeText(this,"Please enter either a message or select an image",Toast.LENGTH_SHORT).show();
             }else{
-                if(edtMessage.getText().toString().length()>10){
-                    System.out.println("Entro2");
+                if(edtMessage.getText().toString().length()<10){
                     edtMessage.setError("The text field should have a lenght longer than 50 characters");
                 }else{
-                    System.out.println("Entro3");
                     Intent intent = new Intent(this,PostActivity.class);
 
                     intent.putExtra(EXTRA_MESSAGE_PICTURE,selectedImageUri.toString());
