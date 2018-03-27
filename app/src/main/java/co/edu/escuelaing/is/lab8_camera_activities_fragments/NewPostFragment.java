@@ -1,108 +1,166 @@
 package co.edu.escuelaing.is.lab8_camera_activities_fragments;
 
+import android.Manifest;
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.app.Fragment;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.Toast;
 
+import java.io.File;
 
-/**
- * A simple {@link Fragment} subclass.
- * Activities that contain this fragment must implement the
- * {@link NewPostFragment.OnFragmentInteractionListener} interface
- * to handle interaction events.
- * Use the {@link NewPostFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
-public class NewPostFragment extends Fragment {
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
+public class NewPostFragment extends Fragment implements View.OnClickListener{
 
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
+    private EditText edtMessage;
+    private Button btnPhoto;
+    private ImageView imgPhoto;
+    private Uri selectedImageUri;
+    private String[] photosCaptured = {"Camera", "Internal Storage"};
 
-    private OnFragmentInteractionListener mListener;
+    private DialogInterface.OnClickListener onClickImageControl;
 
-    public NewPostFragment() {
-        // Required empty public constructor
+    private static final int SELECT_FILE_CAMERA = 0;
+    private static final int SELECT_FILE_INTERNAL = 1;
+    public static final String EXTRA_MESSAGE_MESSAGE = "co.edu.escuelaing.is.lab8.MESSAGE";
+    public static final String EXTRA_MESSAGE_PICTURE = "co.edu.escuelaing.is.lab8.PICTURE";
+
+    @NonNull
+    public static Dialog createSingleChoiceAlertDialog(@NonNull Context context,
+                                                       @Nullable String title,
+                                                       @NonNull CharSequence[] items,
+                                                       @NonNull DialogInterface.OnClickListener optionSelectedListener,
+                                                       @Nullable DialogInterface.OnClickListener cancelListener)
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle(title);
+        builder.setItems(items,optionSelectedListener);
+        if(cancelListener != null){
+            builder.setNegativeButton(R.string.Cancel,cancelListener);
+        }
+        return builder.create();
+
     }
 
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
-     * @return A new instance of fragment NewPostFragment.
-     */
-    // TODO: Rename and change types and number of parameters
-    public static NewPostFragment newInstance(String param1, String param2) {
-        NewPostFragment fragment = new NewPostFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
-        fragment.setArguments(args);
-        return fragment;
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
+    private void grantPermissions(){
+        int permission = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.CAMERA);
+        if(permission != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(getActivity(),new String[]{Manifest.permission.CAMERA},1);
+        }
+        int permission2 = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.READ_EXTERNAL_STORAGE);
+        if(permission2 != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(getActivity(),new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},1);
         }
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_new_post, container, false);
-    }
-
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
-        }
+                             Bundle savedInstanceState){
+        grantPermissions();
+        return inflater.inflate(R.layout.fragment_new_post,container,false);
     }
 
     @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        if (context instanceof OnFragmentInteractionListener) {
-            mListener = (OnFragmentInteractionListener) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnFragmentInteractionListener");
-        }
+    public void onViewCreated(View view, Bundle savedInstanceState){
+
+        edtMessage = view.findViewById(R.id.edtMessage);
+        btnPhoto = view.findViewById(R.id.btnPhoto);
+
+        imgPhoto = view.findViewById(R.id.imgPhoto);
+
+        onClickImageControl = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                Intent intent;
+                if(photosCaptured[i].equals("Camera")){
+                    int permission = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.CAMERA);
+                    if(permission != PackageManager.PERMISSION_GRANTED){
+                        ActivityCompat.requestPermissions(getActivity(),new String[]{Manifest.permission.CAMERA},1);
+                        Toast.makeText(getContext(),"You have to grant permissions, intent again!!",Toast.LENGTH_SHORT).show();
+                    }else{
+                        int permission2 = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.READ_EXTERNAL_STORAGE);
+                        if(permission2 != PackageManager.PERMISSION_GRANTED){
+                            ActivityCompat.requestPermissions(getActivity(),new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},1);
+                            Toast.makeText(getContext(),"You have to grant permissions, intent again!!",Toast.LENGTH_SHORT).show();
+                        }else{
+                            intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                            File photo = new File(Environment.getExternalStorageDirectory(),"Pic.jpg");
+                            intent.putExtra(MediaStore.EXTRA_OUTPUT,Uri.fromFile(photo));
+                            selectedImageUri = Uri.fromFile(photo);
+                            startActivityForResult(intent,SELECT_FILE_CAMERA);
+                        }
+                    }
+                }else{
+                    int permission2 = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.READ_EXTERNAL_STORAGE);
+                    if(permission2 != PackageManager.PERMISSION_GRANTED){
+                        ActivityCompat.requestPermissions(getActivity(),new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},1);
+                        Toast.makeText(getContext(),"You have to grant permissions, intent again!!",Toast.LENGTH_SHORT).show();
+                    }else{
+                        intent = new Intent();
+                        intent.setType("image/*");
+                        intent.setAction(Intent.ACTION_GET_CONTENT);
+                        startActivityForResult(Intent.createChooser(intent,"Select picture from internal storage"),SELECT_FILE_INTERNAL);
+                    }
+                }
+            }
+        };
+
+        btnPhoto.setOnClickListener(this);
     }
 
     @Override
-    public void onDetach() {
-        super.onDetach();
-        mListener = null;
+    public void onActivityResult(int requestCode, int resultCode, Intent data){
+        super.onActivityResult(requestCode,resultCode,data);
+        if(resultCode == Activity.RESULT_OK){
+            switch(requestCode){
+                case SELECT_FILE_CAMERA:
+                    imgPhoto.setImageURI(selectedImageUri);
+                    break;
+                case SELECT_FILE_INTERNAL:
+                    selectedImageUri = data.getData();
+                    imgPhoto.setImageURI(selectedImageUri);
+                    break;
+            }
+        }
     }
 
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
+    public Bundle getDataBundle(){
+        if(edtMessage.getText().toString().length()==0 || imgPhoto.getDrawable() == null){
+            Toast.makeText(getContext(),"Please enter either a message or select an image",Toast.LENGTH_SHORT).show();
+        }else{
+            if(edtMessage.getText().toString().length()<50){
+                edtMessage.setError("The text field should have a lenght longer than 50 characters");
+            }else{
+                Bundle bundle = new Bundle();
+                bundle.putString(EXTRA_MESSAGE_MESSAGE,edtMessage.getText().toString());
+                bundle.putString(EXTRA_MESSAGE_PICTURE,selectedImageUri.toString());
+                return bundle;
+            }
+        }
+        return null;
     }
+
+    @Override
+    public void onClick(View view) {
+        if(view.getId() == btnPhoto.getId()){
+            createSingleChoiceAlertDialog(getContext(),"Select picture captured method",photosCaptured,onClickImageControl,null).show();
+        }
+    }
+
 }

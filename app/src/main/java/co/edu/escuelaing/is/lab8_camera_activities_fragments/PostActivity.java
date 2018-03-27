@@ -23,10 +23,10 @@ public class PostActivity extends AppCompatActivity implements Serializable{
         imgViewPicture = findViewById(R.id.imgViewPicture);
 
         Intent intent = getIntent();
-        String message = intent.getStringExtra(MainActivity.EXTRA_MESSAGE_MESSAGE);
+        String message = intent.getStringExtra(NewPostFragment.EXTRA_MESSAGE_MESSAGE);
         txtViewMessage.setText(message);
 
-        imgViewPicture.setImageURI(Uri.parse(intent.getExtras().getString(MainActivity.EXTRA_MESSAGE_PICTURE)));
+        imgViewPicture.setImageURI(Uri.parse(intent.getExtras().getString(NewPostFragment.EXTRA_MESSAGE_PICTURE)));
 
     }
 
